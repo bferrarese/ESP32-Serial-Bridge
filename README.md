@@ -2,8 +2,8 @@
 
 Transparent WiFi (TCP/MQTT) to UART Bridge, supports STATION WiFi modes. The .ino file is the code for the ESP32. Use Arduino IDE for ESP32 to compile and upload it to the ESP32.
 
-set SSID and PW in config for wifi;
-set MQTT_server, user and pw in config to connect MQTT broker;
+set SSID and PW in config for wifi.
+set MQTT_server, user and pw in config to connect MQTT broker.
 set subTopic and pubTopic in config to send and receive buffer via the bridge.
 (OPT 2)connect your_esp32_ip:8880 to send and receive buffer via the bridge.  (your_esp32_ip:8880  <-> COM0)
 
