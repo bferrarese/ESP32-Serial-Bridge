@@ -2,8 +2,8 @@
 
 #define PROTOCOL_TCP
 #define MAX_NMEA_CLIENTS 4
-#define relay1 19
-#define relay2 18
+//#define relay1 19
+//#define relay2 18
 const char* ssid     = "";
 const char* password = "";
 const char* MQTT_server= "";
