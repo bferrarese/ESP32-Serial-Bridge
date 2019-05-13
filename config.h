@@ -2,7 +2,8 @@
 // 
 #define PROTOCOL_TCP
 #define MAX_NMEA_CLIENTS 4
-
+#define relay1 19
+#define relay2 18
 const char* ssid     = "";
 const char* password = "";
 const char* MQTT_server= "";
@@ -11,9 +12,9 @@ const char* MQTT_pass= "";
 const char* ClientID= "Esp32";
 const char* pubTopic= "Esp32/result";
 const char* subTopic= "Esp32/cmd";
-uint8_t qos= 1; //subscribe qos
-
-bool debug = true;
+unsigned char qos= 1; //subscribe qos
+bool retained= false;
+bool debug = false;
 
 /*************************  COM Port 0 *******************************/
 #define UART_BAUD0 9600            // Baudrate UART0
