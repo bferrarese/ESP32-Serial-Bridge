@@ -1,4 +1,4 @@
-// ESP32 WiFi（TCP/MQTT） <-> 3x UART Bridge
+// ESP32 WiFi（TCP/MQTT） <-> UART Bridge
 // Forked from AlphaLima/ESP32-Serial-Bridge
 
 #include "config.h"
@@ -25,9 +25,28 @@ WiFiClient wfclient;
 PubSubClient client(MQTT_server, 1883, callback, wfclient);
 
 void callback(char* topic, byte* payload, unsigned int length) {
+  
   byte *p = (byte *)malloc(length); 
   memcpy(p, payload, length); // Copy the payload to the new buffer
-  client.publish(pubTopic, p, length);
+
+  /*
+  char msg[length+1];
+  for(int i=0;i<length;i++){
+    msg[i]=(char)p[i];
+  }
+  msg[length]='\0';
+  String msgText(msg);
+
+  if ( msgText == "open relay1") digitalWrite(relay1, HIGH);
+  else if( msgText == "close relay1") digitalWrite(relay1, LOW);
+  else if ( msgText == "open relay2") digitalWrite(relay2, HIGH);
+  else if ( msgText == "close relay2") digitalWrite(relay2, LOW);
+  else {
+    client.publish(pubTopic, p, length, retained);
+    COM->write(p, length); // UART write buffer received via MQTT sub_topic
+  }
+  */
+  client.publish(pubTopic, p, length, retained);
   COM->write(p, length); // UART write buffer received via MQTT sub_topic
   free(p);
 }
@@ -39,9 +58,9 @@ void reconnect() {
     // Attempt to connect
     if (client.connect(MQTT_server, MQTT_user, MQTT_pass)) {
       // Once connected, publish an announcement...
-      client.publish(pubTopic,"hello world see you again");
+      client.publish(pubTopic,"UART<-->WiFi Bridge Reconnected", false);
       // ... and resubscribe
-      client.subscribe(subTopic);
+      client.subscribe(subTopic, qos);
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -57,6 +76,9 @@ void setup() {
   
   COM->begin(UART_BAUD0, SERIAL_PARAM0, SERIAL0_RXPIN, SERIAL0_TXPIN);
   if(debug) COM->println("\n\n WiFi Serial Bridge V2.00");
+  
+  //pinMode(relay1, OUTPUT);
+  //pinMode(relay2, OUTPUT);
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
@@ -65,13 +87,12 @@ void setup() {
   }
   
   if (client.connect(ClientID, MQTT_user, MQTT_pass)){
-    client.publish(pubTopic, "mqtt connect");
-    client.subscribe(subTopic);
+    client.publish(pubTopic, "UART<-->WiFi Bridge Connected", true);
+    client.subscribe(subTopic, qos);
   }
 
   #ifdef PROTOCOL_TCP
     COM->println("Starting TCP Server");  
-    if(debug) COM->println("Starting TCP Server 1");  
     server->begin(); // start TCP server 
     server->setNoDelay(true);
   #endif
@@ -126,7 +147,7 @@ void loop() {
         if(TCPClient[cln])                     
           TCPClient[cln].write(buf2, i2); //send the buffer to TCP port:8880 
       }
-      client.publish(pubTopic, buf2, i2); //Publish the buffer received via serial
+      client.publish(pubTopic, buf2, i2, retained); //Publish the buffer received via serial
       i2 = 0;
     }
   }
