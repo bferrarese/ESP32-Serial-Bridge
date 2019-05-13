@@ -1,5 +1,5 @@
 // config: ////////////////////////////////////////////////////////////
-// 
+
 #define PROTOCOL_TCP
 #define MAX_NMEA_CLIENTS 4
 #define relay1 19
