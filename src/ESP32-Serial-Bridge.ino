@@ -18,7 +18,7 @@ uint16_t i2=0;
   #include <WiFiClient.h>
   WiFiServer server_0(SERIAL0_TCP_PORT);
   WiFiServer *server=&server_0;
-  WiFiClient TCPClient[MAX_NMEA_CLIENTS]; 
+  WiFiClient *TCPClient[MAX_NMEA_CLIENTS];
 #endif
 
 WiFiClient wfclient;
@@ -85,14 +85,15 @@ void setup() {
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
   }
+  if(debug) COM->println(WiFi.localIP());
   
-  if (client.connect(ClientID, MQTT_user, MQTT_pass)){
-    client.publish(pubTopic, "UART<-->WiFi Bridge Connected", true);
+  if (strlen(MQTT_server) && client.connect(ClientID, MQTT_user, MQTT_pass)){
+    client.publish(pubTopic, "UART<-->WiFi Bridge Connected", false);
     client.subscribe(subTopic, qos);
   }
 
   #ifdef PROTOCOL_TCP
-    COM->println("Starting TCP Server");  
+    if(debug) COM->println("Starting TCP Server");
     server->begin(); // start TCP server 
     server->setNoDelay(true);
   #endif
@@ -101,35 +102,54 @@ void setup() {
 }
 
 void loop() {
-  if (!client.connected()) {
-    reconnect();
+  if(strlen(MQTT_server)) {
+    if (!client.connected()) {
+      reconnect();
+    }
+    client.loop();
   }
-  client.loop();
     
   #ifdef PROTOCOL_TCP
+    for(byte i = 0; i < MAX_NMEA_CLIENTS; i++){
+      //find disconnected spot
+      if (TCPClient[i] && !TCPClient[i]->connected()) {
+        TCPClient[i]->stop();
+        delete TCPClient[i];
+        TCPClient[i] = NULL;
+        if(debug) COM->print(i);
+        if(debug) COM->println("Client disconnected");
+      }
+    }
     if (server->hasClient()) {
       for(byte i = 0; i < MAX_NMEA_CLIENTS; i++){
-      //find free/disconnected spot
-        if (!TCPClient[i] || !TCPClient[i].connected()){
-          if(TCPClient[i]) TCPClient[i].stop();
-          TCPClient[i] = server->available();
+        //find free/disconnected spot
+        if (!TCPClient[i] || !TCPClient[i]->connected()) {
+          if(TCPClient[i]) {
+            TCPClient[i]->stop();
+            delete TCPClient[i];
+            TCPClient[i] = NULL;
+            if(debug) COM->print(i);
+            if(debug) COM->println("Client disconnected in new client");
+          }
+          TCPClient[i] = new WiFiClient;
+          *TCPClient[i] = server->available();
           if(debug) COM->print("New client for COM"); 
           if(debug) COM->print(0); 
           if(debug) COM->println(i);
           continue;
         }
       }
-        //no free/disconnected spot so reject
-        WiFiClient TmpserverClient = server->available();
-        TmpserverClient.stop();
+      //no free/disconnected spot so reject
+      WiFiClient TmpserverClient = server->available();
+      TmpserverClient.stop();
     }
   #endif
  
   if(COM != NULL) {
     for(byte cln = 0; cln < MAX_NMEA_CLIENTS; cln++) {               
       if(TCPClient[cln]) {
-        while(TCPClient[cln].available()) {
-          buf1[i1] = TCPClient[cln].read(); // read char from TCP port:8880
+        while(TCPClient[cln]->available()) {
+          buf1[i1] = TCPClient[cln]->read(); // read char from TCP port:8880
           if(i1<bufferSize-1) i1++;
         } 
         COM->write(buf1, i1); // now send to UART
@@ -145,9 +165,11 @@ void loop() {
       // now send to WiFi:
       for(byte cln = 0; cln < MAX_NMEA_CLIENTS; cln++) {   
         if(TCPClient[cln])                     
-          TCPClient[cln].write(buf2, i2); //send the buffer to TCP port:8880 
+          TCPClient[cln]->write(buf2, i2); //send the buffer to TCP port:8880
       }
-      client.publish(pubTopic, buf2, i2, retained); //Publish the buffer received via serial
+      if (strlen(MQTT_server)) {
+        client.publish(pubTopic, buf2, i2, retained); //Publish the buffer received via serial
+      }
       i2 = 0;
     }
   }
