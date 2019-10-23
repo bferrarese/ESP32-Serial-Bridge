@@ -3,7 +3,9 @@
 #define _ESP32_SERIAL_BRIDGE_CONFIG_H_
 
 #define PROTOCOL_TCP
-#define MAX_NMEA_CLIENTS 4
+#ifndef MAX_NMEA_CLIENTS
+#define MAX_NMEA_CLIENTS 1
+#endif
 //#define relay1 19
 //#define relay2 18
 const char *host = "espSer2net";
@@ -26,8 +28,12 @@ bool debug = false;
 
 /*************************  COM Port 0 *******************************/
 #define UART_BAUD0 115200        // Baudrate UART0
+#ifdef ESP8266
+#define SERIAL_PARAM0 SWSERIAL_8N1 // Data/Parity/Stop UART0
+#define SERIAL0_RXPIN D5         // receive Pin UART0
+#define SERIAL0_TXPIN D6         // transmit Pin UART0
+#else
 #define SERIAL_PARAM0 SERIAL_8N1 // Data/Parity/Stop UART0
-#ifndef ESP8266
 #define SERIAL0_RXPIN 21         // receive Pin UART0
 #define SERIAL0_TXPIN 1          // transmit Pin UART0
 #endif

@@ -6,6 +6,7 @@
 #ifdef ESP8266
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
+#include "SoftwareSerial.h"
 #else
 #include <WiFi.h>
 #include <ESPmDNS.h>
@@ -19,7 +20,13 @@
 
 void callback(char *topic, byte *payload, unsigned int length);
 
+// For debug log output/update FW
 HardwareSerial *COM = &Serial;
+
+#ifdef ESP8266
+SoftwareSerial swSer1(SERIAL0_RXPIN, SERIAL0_TXPIN, false, 256);
+SoftwareSerial *BRIDGECOM = &swSer1;
+#endif
 
 uint8_t buf1[BUFFERSIZE];
 uint16_t i1 = 0;
@@ -64,7 +71,11 @@ void callback(char *topic, byte *payload, unsigned int length)
   }
   */
   client.publish(pubTopic, p, length, retained);
+#ifdef ESP8266
+  BRIDGECOM->write(p, length); // UART write buffer received via MQTT sub_topic
+#else
   COM->write(p, length); // UART write buffer received via MQTT sub_topic
+#endif
   free(p);
 }
 
@@ -97,7 +108,8 @@ void setup()
 {
   delay(500);
 #ifdef ESP8266
-  COM->begin(UART_BAUD0, SERIAL_PARAM0);
+  COM->begin(115200, SERIAL_8N1);
+  BRIDGECOM->begin(UART_BAUD0, SERIAL_PARAM0);
 #else
   COM->begin(UART_BAUD0, SERIAL_PARAM0, SERIAL0_RXPIN, SERIAL0_TXPIN);
 #endif
@@ -256,7 +268,11 @@ void loop()
   }
 #endif
 
+#ifdef ESP8266
+  if (BRIDGECOM != NULL)
+#else
   if (COM != NULL)
+#endif
   {
     for (byte cln = 0; cln < MAX_NMEA_CLIENTS; cln++)
     {
@@ -268,16 +284,32 @@ void loop()
           if (i1 < BUFFERSIZE - 1)
             i1++;
         }
+#ifdef ESP8266
+        BRIDGECOM->write(buf1, i1); // now send to UART
+#else
         COM->write(buf1, i1); // now send to UART
+#endif
         i1 = 0;
       }
     }
 
+#ifdef ESP8266
+    if (BRIDGECOM->available())
+#else
     if (COM->available())
+#endif
     {
+#ifdef ESP8266
+      while (BRIDGECOM->available())
+#else
       while (COM->available())
+#endif
       {
+#ifdef ESP8266
+        buf2[i2] = BRIDGECOM->read(); // read char from UART
+#else
         buf2[i2] = COM->read(); // read char from UART
+#endif
         if (i2 < BUFFERSIZE - 1)
           i2++;
       }
