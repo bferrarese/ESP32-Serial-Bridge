@@ -106,7 +106,7 @@ void setup()
 
   //pinMode(relay1, OUTPUT);
   //pinMode(relay2, OUTPUT);
-  if (strlen(ssid) > 0)
+  if (strlen(ssid) == 0)
   {
     COM->println("No SSID defined, use wifi manager.");
     AsyncWiFiManager wifiManager(&wifiManagerServer, &wifiManagerDNS);
