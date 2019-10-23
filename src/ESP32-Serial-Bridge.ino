@@ -97,25 +97,25 @@ void setup()
 {
   delay(500);
 #ifdef ESP8266
-  Serial.begin(UART_BAUD0, SERIAL_PARAM0);
+  COM->begin(UART_BAUD0, SERIAL_PARAM0);
 #else
   COM->begin(UART_BAUD0, SERIAL_PARAM0, SERIAL0_RXPIN, SERIAL0_TXPIN);
 #endif
   if (debug)
-    Serial.println("\n\n WiFi Serial Bridge V2.00");
+    COM->println("\n\n WiFi Serial Bridge V2.00");
 
   //pinMode(relay1, OUTPUT);
   //pinMode(relay2, OUTPUT);
-
-  if (strlen(ssid))
+  if (strlen(ssid) > 0)
   {
-    AsyncWiFiManager wifiManager(&wifiManagerServer, &wifiManagerDNS);
-
     COM->println("No SSID defined, use wifi manager.");
+    AsyncWiFiManager wifiManager(&wifiManagerServer, &wifiManagerDNS);
     wifiManager.autoConnect(host);
   }
   else
   {
+    COM->print("SSID defined, connect to ");
+    COM->println(ssid);
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
   }
