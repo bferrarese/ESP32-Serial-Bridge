@@ -1,4 +1,6 @@
 // config: ////////////////////////////////////////////////////////////
+#ifndef _ESP32_SERIAL_BRIDGE_CONFIG_H_
+#define _ESP32_SERIAL_BRIDGE_CONFIG_H_
 
 #define PROTOCOL_TCP
 #define MAX_NMEA_CLIENTS 4
@@ -25,12 +27,13 @@ bool debug = false;
 /*************************  COM Port 0 *******************************/
 #define UART_BAUD0 115200        // Baudrate UART0
 #define SERIAL_PARAM0 SERIAL_8N1 // Data/Parity/Stop UART0
-#ifdef USE_ESP32
+#ifndef ESP8266
 #define SERIAL0_RXPIN 21         // receive Pin UART0
 #define SERIAL0_TXPIN 1          // transmit Pin UART0
 #endif
 #define SERIAL0_TCP_PORT 8880    // Wifi Port UART0
 
-#define bufferSize 1024
+#define BUFFERSIZE 1024
 
+#endif
 //////////////////////////////////////////////////////////////////////////

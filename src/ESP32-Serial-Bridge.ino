@@ -2,25 +2,29 @@
 // Forked from AlphaLima/ESP32-Serial-Bridge
 
 #include "config.h"
-#ifdef USE_ESP32
+
+#ifdef ESP8266
+#include <ESP8266WiFi.h>
+#include <ESP8266mDNS.h>
+#else
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #endif
-#ifdef USE_ESP8266
-#include <ESP8266WiFi.h>
-#include <ESP8266mDNS.h>
-#endif
+
+#include <ESPAsyncWebServer.h>
 #include <PubSubClient.h>
 #include <ArduinoOTA.h>
+#include <DNSServer.h>
+#include <ESPAsyncWiFiManager.h>
 
 void callback(char *topic, byte *payload, unsigned int length);
 
 HardwareSerial *COM = &Serial;
 
-uint8_t buf1[bufferSize];
+uint8_t buf1[BUFFERSIZE];
 uint16_t i1 = 0;
 
-uint8_t buf2[bufferSize];
+uint8_t buf2[BUFFERSIZE];
 uint16_t i2 = 0;
 
 #ifdef PROTOCOL_TCP
@@ -32,6 +36,9 @@ WiFiClient *TCPClient[MAX_NMEA_CLIENTS];
 
 WiFiClient wfclient;
 PubSubClient client(MQTT_server, 1883, callback, wfclient);
+
+AsyncWebServer wifiManagerServer(80);
+DNSServer wifiManagerDNS;
 
 void callback(char *topic, byte *payload, unsigned int length)
 {
@@ -89,11 +96,10 @@ void reconnect()
 void setup()
 {
   delay(500);
-#ifdef USE_ESP32
-  COM->begin(UART_BAUD0, SERIAL_PARAM0, SERIAL0_RXPIN, SERIAL0_TXPIN);
-#endif
-#ifdef USE_ESP8266
+#ifdef ESP8266
   Serial.begin(UART_BAUD0, SERIAL_PARAM0);
+#else
+  COM->begin(UART_BAUD0, SERIAL_PARAM0, SERIAL0_RXPIN, SERIAL0_TXPIN);
 #endif
   if (debug)
     Serial.println("\n\n WiFi Serial Bridge V2.00");
@@ -101,8 +107,18 @@ void setup()
   //pinMode(relay1, OUTPUT);
   //pinMode(relay2, OUTPUT);
 
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
+  if (strlen(ssid))
+  {
+    AsyncWiFiManager wifiManager(&wifiManagerServer, &wifiManagerDNS);
+
+    COM->println("No SSID defined, use wifi manager.");
+    wifiManager.autoConnect(host);
+  }
+  else
+  {
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(ssid, password);
+  }
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
@@ -128,8 +144,8 @@ void setup()
       type = "filesystem";
     }
 
-  if (debug)
-    COM->println("Start updating " + type);
+    if (debug)
+      COM->println("Start updating " + type);
   });
   ArduinoOTA.onEnd([]() {
     COM->println("\nEnd");
@@ -175,7 +191,7 @@ void setup()
   server->setNoDelay(true);
 #endif
 
-#ifdef USE_ESP32
+#ifndef ESP8266
   esp_err_t esp_wifi_set_max_tx_power(50); //lower WiFi Power
 #endif
 }
@@ -249,7 +265,7 @@ void loop()
         while (TCPClient[cln]->available())
         {
           buf1[i1] = TCPClient[cln]->read(); // read char from TCP port:8880
-          if (i1 < bufferSize - 1)
+          if (i1 < BUFFERSIZE - 1)
             i1++;
         }
         COM->write(buf1, i1); // now send to UART
@@ -262,7 +278,7 @@ void loop()
       while (COM->available())
       {
         buf2[i2] = COM->read(); // read char from UART
-        if (i2 < bufferSize - 1)
+        if (i2 < BUFFERSIZE - 1)
           i2++;
       }
       // now send to WiFi:
@@ -279,7 +295,7 @@ void loop()
     }
   }
 
-#ifdef USE_ESP8266
+#ifdef ESP8266
   MDNS.update();
 #endif
   ArduinoOTA.handle();
