@@ -4,6 +4,7 @@
 #define MAX_NMEA_CLIENTS 4
 //#define relay1 19
 //#define relay2 18
+const char *host = "espSer2net";
 const char *ssid = "";
 const char *password = "";
 const char *MQTT_server = "";
@@ -22,10 +23,12 @@ bool debug = false;
 #endif
 
 /*************************  COM Port 0 *******************************/
-#define UART_BAUD0 9600          // Baudrate UART0
+#define UART_BAUD0 115200        // Baudrate UART0
 #define SERIAL_PARAM0 SERIAL_8N1 // Data/Parity/Stop UART0
+#ifdef USE_ESP32
 #define SERIAL0_RXPIN 21         // receive Pin UART0
 #define SERIAL0_TXPIN 1          // transmit Pin UART0
+#endif
 #define SERIAL0_TCP_PORT 8880    // Wifi Port UART0
 
 #define bufferSize 1024

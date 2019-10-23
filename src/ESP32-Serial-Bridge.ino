@@ -2,8 +2,16 @@
 // Forked from AlphaLima/ESP32-Serial-Bridge
 
 #include "config.h"
+#ifdef USE_ESP32
 #include <WiFi.h>
+#include <ESPmDNS.h>
+#endif
+#ifdef USE_ESP8266
+#include <ESP8266WiFi.h>
+#include <ESP8266mDNS.h>
+#endif
 #include <PubSubClient.h>
+
 void callback(char *topic, byte *payload, unsigned int length);
 
 HardwareSerial *COM = &Serial;
@@ -80,10 +88,14 @@ void reconnect()
 void setup()
 {
   delay(500);
-
+#ifdef USE_ESP32
   COM->begin(UART_BAUD0, SERIAL_PARAM0, SERIAL0_RXPIN, SERIAL0_TXPIN);
+#endif
+#ifdef USE_ESP8266
+  Serial.begin(UART_BAUD0, SERIAL_PARAM0);
+#endif
   if (debug)
-    COM->println("\n\n WiFi Serial Bridge V2.00");
+    Serial.println("\n\n WiFi Serial Bridge V2.00");
 
   //pinMode(relay1, OUTPUT);
   //pinMode(relay2, OUTPUT);
@@ -96,6 +108,9 @@ void setup()
   }
   if (debug)
     COM->println(WiFi.localIP());
+
+  // Enable MDNS
+  MDNS.begin(host);
 
   if (strlen(MQTT_server) && client.connect(ClientID, MQTT_user, MQTT_pass))
   {
@@ -110,7 +125,9 @@ void setup()
   server->setNoDelay(true);
 #endif
 
+#ifdef USE_ESP32
   esp_err_t esp_wifi_set_max_tx_power(50); //lower WiFi Power
+#endif
 }
 
 void loop()
@@ -211,4 +228,8 @@ void loop()
       i2 = 0;
     }
   }
+
+#ifdef USE_ESP8266
+  MDNS.update();
+#endif
 }
