@@ -11,6 +11,7 @@
 #include <ESP8266mDNS.h>
 #endif
 #include <PubSubClient.h>
+#include <ArduinoOTA.h>
 
 void callback(char *topic, byte *payload, unsigned int length);
 
@@ -111,6 +112,55 @@ void setup()
 
   // Enable MDNS
   MDNS.begin(host);
+
+  // Enable OTA
+
+  ArduinoOTA.setPort(8266);
+  ArduinoOTA.setHostname(host);
+  ArduinoOTA.onStart([]() {
+    String type;
+    if (ArduinoOTA.getCommand() == U_FLASH)
+    {
+      type = "sketch";
+    }
+    else
+    { // U_FS
+      type = "filesystem";
+    }
+
+  if (debug)
+    COM->println("Start updating " + type);
+  });
+  ArduinoOTA.onEnd([]() {
+    COM->println("\nEnd");
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    COM->printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    COM->printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR)
+    {
+      COM->println("Auth Failed");
+    }
+    else if (error == OTA_BEGIN_ERROR)
+    {
+      COM->println("Begin Failed");
+    }
+    else if (error == OTA_CONNECT_ERROR)
+    {
+      COM->println("Connect Failed");
+    }
+    else if (error == OTA_RECEIVE_ERROR)
+    {
+      COM->println("Receive Failed");
+    }
+    else if (error == OTA_END_ERROR)
+    {
+      COM->println("End Failed");
+    }
+  });
+  ArduinoOTA.begin();
 
   if (strlen(MQTT_server) && client.connect(ClientID, MQTT_user, MQTT_pass))
   {
@@ -232,4 +282,5 @@ void loop()
 #ifdef USE_ESP8266
   MDNS.update();
 #endif
+  ArduinoOTA.handle();
 }
