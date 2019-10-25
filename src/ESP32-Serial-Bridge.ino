@@ -23,11 +23,6 @@ void callback(char *topic, byte *payload, unsigned int length);
 // For debug log output/update FW
 HardwareSerial *COM = &Serial;
 
-#ifdef ESP8266
-SoftwareSerial swSer1(SERIAL0_RXPIN, SERIAL0_TXPIN, false, 256);
-SoftwareSerial *BRIDGECOM = &swSer1;
-#endif
-
 uint8_t buf1[BUFFERSIZE];
 uint16_t i1 = 0;
 
@@ -71,11 +66,7 @@ void callback(char *topic, byte *payload, unsigned int length)
   }
   */
   client.publish(pubTopic, p, length, retained);
-#ifdef ESP8266
-  BRIDGECOM->write(p, length); // UART write buffer received via MQTT sub_topic
-#else
   COM->write(p, length); // UART write buffer received via MQTT sub_topic
-#endif
   free(p);
 }
 
@@ -108,8 +99,7 @@ void setup()
 {
   delay(500);
 #ifdef ESP8266
-  COM->begin(115200, SERIAL_8N1);
-  BRIDGECOM->begin(UART_BAUD0, SERIAL_PARAM0);
+  COM->begin(UART_BAUD0, SERIAL_PARAM0);
 #else
   COM->begin(UART_BAUD0, SERIAL_PARAM0, SERIAL0_RXPIN, SERIAL0_TXPIN);
 #endif
@@ -120,14 +110,18 @@ void setup()
   //pinMode(relay2, OUTPUT);
   if (strlen(ssid) == 0)
   {
-    COM->println("No SSID defined, use wifi manager.");
+    if (debug)
+      COM->println("No SSID defined, use wifi manager.");
     AsyncWiFiManager wifiManager(&wifiManagerServer, &wifiManagerDNS);
     wifiManager.autoConnect(host);
   }
   else
   {
-    COM->print("SSID defined, connect to ");
-    COM->println(ssid);
+    if (debug)
+    {
+      COM->print("SSID defined, connect to ");
+      COM->println(ssid);
+    }
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
   }
@@ -160,10 +154,12 @@ void setup()
       COM->println("Start updating " + type);
   });
   ArduinoOTA.onEnd([]() {
-    COM->println("\nEnd");
+    if (debug)
+      COM->println("\nEnd");
   });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    COM->printf("Progress: %u%%\r", (progress / (total / 100)));
+    if (debug)
+      COM->printf("Progress: %u%%\r", (progress / (total / 100)));
   });
   ArduinoOTA.onError([](ota_error_t error) {
     COM->printf("Error[%u]: ", error);
@@ -229,9 +225,10 @@ void loop()
       delete TCPClient[i];
       TCPClient[i] = NULL;
       if (debug)
+      {
         COM->print(i);
-      if (debug)
         COM->println("Client disconnected");
+      }
     }
   }
   if (server->hasClient())
@@ -247,18 +244,20 @@ void loop()
           delete TCPClient[i];
           TCPClient[i] = NULL;
           if (debug)
+          {
             COM->print(i);
-          if (debug)
-            COM->println("Client disconnected in new client");
+            COM->println("Client disconnected");
+          }
         }
         TCPClient[i] = new WiFiClient;
         *TCPClient[i] = server->available();
         if (debug)
+        {
+
           COM->print("New client for COM");
-        if (debug)
           COM->print(0);
-        if (debug)
           COM->println(i);
+        }
         continue;
       }
     }
@@ -268,11 +267,7 @@ void loop()
   }
 #endif
 
-#ifdef ESP8266
-  if (BRIDGECOM != NULL)
-#else
   if (COM != NULL)
-#endif
   {
     for (byte cln = 0; cln < MAX_NMEA_CLIENTS; cln++)
     {
@@ -284,32 +279,16 @@ void loop()
           if (i1 < BUFFERSIZE - 1)
             i1++;
         }
-#ifdef ESP8266
-        BRIDGECOM->write(buf1, i1); // now send to UART
-#else
         COM->write(buf1, i1); // now send to UART
-#endif
         i1 = 0;
       }
     }
 
-#ifdef ESP8266
-    if (BRIDGECOM->available())
-#else
     if (COM->available())
-#endif
     {
-#ifdef ESP8266
-      while (BRIDGECOM->available())
-#else
       while (COM->available())
-#endif
       {
-#ifdef ESP8266
-        buf2[i2] = BRIDGECOM->read(); // read char from UART
-#else
         buf2[i2] = COM->read(); // read char from UART
-#endif
         if (i2 < BUFFERSIZE - 1)
           i2++;
       }

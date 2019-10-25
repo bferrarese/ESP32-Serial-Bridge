@@ -29,9 +29,7 @@ bool debug = false;
 /*************************  COM Port 0 *******************************/
 #define UART_BAUD0 115200        // Baudrate UART0
 #ifdef ESP8266
-#define SERIAL_PARAM0 SWSERIAL_8N1 // Data/Parity/Stop UART0
-#define SERIAL0_RXPIN D5         // receive Pin UART0
-#define SERIAL0_TXPIN D6         // transmit Pin UART0
+#define SERIAL_PARAM0 SERIAL_8N1 // Data/Parity/Stop UART0
 #else
 #define SERIAL_PARAM0 SERIAL_8N1 // Data/Parity/Stop UART0
 #define SERIAL0_RXPIN 21         // receive Pin UART0
