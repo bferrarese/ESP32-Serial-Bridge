@@ -22,8 +22,11 @@ void callback(char *topic, byte *payload, unsigned int length);
 
 // For debug log output/update FW
 #if (DEBUG)
-HardwareSerial *DBGCOM = &Serial;
-#define LOGD(...) DBGCOM->printf(__VA_ARGS__)
+HardwareSerial *DBGCOM = &Serial1;
+#define LOGD(...) do {\
+  DBGCOM->printf(__VA_ARGS__);\
+  DBGCOM->println();\
+} while(0)
 #else
 #define LOGD(...)
 #endif
@@ -108,8 +111,8 @@ void setup()
 #else
   COM->begin(UART_BAUD0, SERIAL_PARAM0, SERIAL0_RXPIN, SERIAL0_TXPIN);
 #endif
-#ifdef DEBUG
-  DBGCOM->begin(9600);
+#if (DEBUG)
+  DBGCOM->begin(115200);
 #endif
   LOGD("\n\n WiFi Serial Bridge V2.00");
 
@@ -119,8 +122,8 @@ void setup()
   {
     LOGD("No SSID defined, use wifi manager.");
     AsyncWiFiManager wifiManager(&wifiManagerServer, &wifiManagerDNS);
-#ifdef DEBUG
-    wifiManager.setDebugOutput(true);
+#if (DEBUG)
+    wifiManager.setDebugOutput(false);
 #else
     wifiManager.setDebugOutput(false);
 #endif
@@ -261,8 +264,17 @@ void loop()
           if (i1 < BUFFERSIZE - 1)
             i1++;
         }
-        COM->write(buf1, i1); // now send to UART
-        i1 = 0;
+        if (i1 > 0)
+        {
+          COM->write(buf1, i1); // now send to UART
+#if (DEBUG)
+          DBGCOM->printf("TX(%d):\t", i1);
+          for (int i = 0; i < i1; i++)
+            DBGCOM->printf("%02x ", buf1[i]);
+          DBGCOM->println();
+#endif
+          i1 = 0;
+        }
       }
     }
 
@@ -284,6 +296,12 @@ void loop()
       {
         client.publish(pubTopic, buf2, i2, retained); //Publish the buffer received via serial
       }
+#if (DEBUG)
+        DBGCOM->printf("RX(%d):\t", i2);
+        for (int i = 0; i < i2; i++)
+          DBGCOM->printf("%02x ", buf2[i]);
+        DBGCOM->println();
+#endif
       i2 = 0;
     }
   }
