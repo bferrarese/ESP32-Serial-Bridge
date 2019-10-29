@@ -21,6 +21,13 @@
 void callback(char *topic, byte *payload, unsigned int length);
 
 // For debug log output/update FW
+#if (DEBUG)
+HardwareSerial *DBGCOM = &Serial;
+#define LOGD(...) DBGCOM->printf(__VA_ARGS__)
+#else
+#define LOGD(...)
+#endif
+
 HardwareSerial *COM = &Serial;
 
 uint8_t buf1[BUFFERSIZE];
@@ -75,7 +82,7 @@ void reconnect()
   // Loop until we're reconnected
   while (!client.connected())
   {
-    Serial.print("Attempting MQTT connection...");
+    LOGD("Attempting MQTT connection...");
     // Attempt to connect
     if (client.connect(MQTT_server, MQTT_user, MQTT_pass))
     {
@@ -86,9 +93,7 @@ void reconnect()
     }
     else
     {
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
+      LOGD("failed, rc=%d try again in 5 seconds.", client.state());
       // Wait 5 seconds before retrying
       delay(5000);
     }
@@ -103,34 +108,36 @@ void setup()
 #else
   COM->begin(UART_BAUD0, SERIAL_PARAM0, SERIAL0_RXPIN, SERIAL0_TXPIN);
 #endif
-  if (debug)
-    COM->println("\n\n WiFi Serial Bridge V2.00");
+#ifdef DEBUG
+  DBGCOM->begin(9600);
+#endif
+  LOGD("\n\n WiFi Serial Bridge V2.00");
 
   //pinMode(relay1, OUTPUT);
   //pinMode(relay2, OUTPUT);
   if (strlen(ssid) == 0)
   {
-    if (debug)
-      COM->println("No SSID defined, use wifi manager.");
+    LOGD("No SSID defined, use wifi manager.");
     AsyncWiFiManager wifiManager(&wifiManagerServer, &wifiManagerDNS);
+#ifdef DEBUG
+    wifiManager.setDebugOutput(true);
+#else
+    wifiManager.setDebugOutput(false);
+#endif
     wifiManager.autoConnect(host);
   }
   else
   {
-    if (debug)
-    {
-      COM->print("SSID defined, connect to ");
-      COM->println(ssid);
-    }
+    LOGD("SSID defined, connect to %s", ssid);
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
   }
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
+    LOGD("Connecting to %s", ssid);
   }
-  if (debug)
-    COM->println(WiFi.localIP());
+  LOGD(WiFi.localIP().toString().c_str());
 
   // Enable MDNS
   MDNS.begin(host);
@@ -140,48 +147,38 @@ void setup()
   ArduinoOTA.setPort(8266);
   ArduinoOTA.setHostname(host);
   ArduinoOTA.onStart([]() {
-    String type;
     if (ArduinoOTA.getCommand() == U_FLASH)
-    {
-      type = "sketch";
-    }
-    else
-    { // U_FS
-      type = "filesystem";
-    }
-
-    if (debug)
-      COM->println("Start updating " + type);
+      LOGD("Start updating sketch");
+    else// U_FS
+      LOGD("Start updating filesystem");
   });
   ArduinoOTA.onEnd([]() {
-    if (debug)
-      COM->println("\nEnd");
+    LOGD("\nEnd");
   });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    if (debug)
-      COM->printf("Progress: %u%%\r", (progress / (total / 100)));
+    LOGD("Progress: %u%%\r", (progress / (total / 100)));
   });
   ArduinoOTA.onError([](ota_error_t error) {
-    COM->printf("Error[%u]: ", error);
+    LOGD("Error[%u]: ", error);
     if (error == OTA_AUTH_ERROR)
     {
-      COM->println("Auth Failed");
+      LOGD("Auth Failed");
     }
     else if (error == OTA_BEGIN_ERROR)
     {
-      COM->println("Begin Failed");
+      LOGD("Begin Failed");
     }
     else if (error == OTA_CONNECT_ERROR)
     {
-      COM->println("Connect Failed");
+      LOGD("Connect Failed");
     }
     else if (error == OTA_RECEIVE_ERROR)
     {
-      COM->println("Receive Failed");
+      LOGD("Receive Failed");
     }
     else if (error == OTA_END_ERROR)
     {
-      COM->println("End Failed");
+      LOGD("End Failed");
     }
   });
   ArduinoOTA.begin();
@@ -193,8 +190,7 @@ void setup()
   }
 
 #ifdef PROTOCOL_TCP
-  if (debug)
-    COM->println("Starting TCP Server");
+  LOGD("Starting TCP Server");
   server->begin(); // start TCP server
   server->setNoDelay(true);
 #endif
@@ -224,11 +220,7 @@ void loop()
       TCPClient[i]->stop();
       delete TCPClient[i];
       TCPClient[i] = NULL;
-      if (debug)
-      {
-        COM->print(i);
-        COM->println("Client disconnected");
-      }
+      LOGD("Client disconnected");
     }
   }
   if (server->hasClient())
@@ -243,21 +235,11 @@ void loop()
           TCPClient[i]->stop();
           delete TCPClient[i];
           TCPClient[i] = NULL;
-          if (debug)
-          {
-            COM->print(i);
-            COM->println("Client disconnected");
-          }
+          LOGD("Client disconnected");
         }
         TCPClient[i] = new WiFiClient;
         *TCPClient[i] = server->available();
-        if (debug)
-        {
-
-          COM->print("New client for COM");
-          COM->print(0);
-          COM->println(i);
-        }
+        LOGD("New client for COM");
         continue;
       }
     }

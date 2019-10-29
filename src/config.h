@@ -20,12 +20,6 @@ const char *subTopic = "Esp32/cmd";
 unsigned char qos = 1; //subscribe qos
 bool retained = false;
 
-#if (DEBUG)
-bool debug = true;
-#else
-bool debug = false;
-#endif
-
 /*************************  COM Port 0 *******************************/
 #define UART_BAUD0 115200        // Baudrate UART0
 #ifdef ESP8266
